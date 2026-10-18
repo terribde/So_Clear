@@ -1,0 +1,21 @@
+{
+  "name": "@soclear/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/domain/ratings.test.ts src/http/routes.test.ts"
+  },
+  "dependencies": {
+    "@soclear/contracts": "workspace:*",
+    "fastify": "^5.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
