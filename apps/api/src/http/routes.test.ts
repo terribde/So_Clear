@@ -2,7 +2,7 @@ import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildApp } from './routes.js';
 
-const app = buildApp({ cursorSecret: 'test-cursor-secret' });
+const app = await buildApp({ cursorSecret: 'test-cursor-secret' });
 after(async () => {
   await app.close();
 });
@@ -139,4 +139,68 @@ test('sections expose meetings and never turn unknown time into a concrete slot'
   assert.equal(unknown.meetings[0].timeUnknown, true);
   assert.equal(unknown.meetings[0].weekday, null);
   assert.ok(unknown.note.includes('不能据此判断'));
+});
+
+test('single review and section detail endpoints expose only public fields', async () => {
+  const review = await app.inject({ method: 'GET', url: '/api/v1/public/reviews/rv-shenzhiyuan-01' });
+  assert.equal(review.statusCode, 200);
+  const reviewBody = review.json().data;
+  assert.equal(reviewBody.id, 'rv-shenzhiyuan-01');
+  assert.equal(reviewBody.teacherId, 't-shenzhiyuan');
+  assert.equal(reviewBody.revision, 1);
+  const reviewText = JSON.stringify(reviewBody);
+  for (const forbidden of ['userId', 'author', 'email', 'moderationNote', 'status', 'reviewerId']) {
+    assert.equal(reviewText.includes(`"${forbidden}"`), false, `unexpected review field ${forbidden}`);
+  }
+
+  const section = await app.inject({ method: 'GET', url: '/api/v1/public/sections/s-theorymech-03' });
+  assert.equal(section.statusCode, 200);
+  const sectionBody = section.json().data;
+  assert.equal(sectionBody.sectionCode, 'SEC-LL201-03');
+  assert.equal(sectionBody.meetings[0].timeUnknown, true);
+  assert.equal(sectionBody.capacity, null);
+
+  const missingReview = await app.inject({ method: 'GET', url: '/api/v1/public/reviews/rv-missing' });
+  assert.equal(missingReview.statusCode, 404);
+  assert.equal(missingReview.json().error.code, 'NOT_FOUND');
+
+  const missingSection = await app.inject({ method: 'GET', url: '/api/v1/public/sections/s-missing' });
+  assert.equal(missingSection.statusCode, 404);
+  assert.equal(missingSection.json().error.code, 'NOT_FOUND');
+});
+
+test('public responses carry hardening headers and readiness is no-store', async () => {
+  const response = await app.inject({ method: 'GET', url: '/api/v1/public/overview' });
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.headers['x-content-type-options'], 'nosniff');
+  assert.equal(response.headers['x-frame-options'], 'DENY');
+  assert.equal(response.headers['referrer-policy'], 'no-referrer');
+  assert.match(String(response.headers['content-security-policy']), /frame-ancestors 'none'/);
+  assert.equal(response.headers['ratelimit-limit'], '180');
+  assert.ok(response.headers['ratelimit-remaining']);
+
+  const ready = await app.inject({ method: 'GET', url: '/health/ready' });
+  assert.equal(ready.statusCode, 200);
+  assert.equal(ready.json().status, 'ready');
+  assert.equal(ready.headers['cache-control'], 'no-store, max-age=0');
+});
+
+test('rate limiter rejects requests above the configured per-IP budget', async () => {
+  const limited = await buildApp({
+    cursorSecret: 'test-cursor-secret',
+    rateLimit: { limit: 2, windowMs: 60_000 },
+  });
+  try {
+    const first = await limited.inject({ method: 'GET', url: '/api/v1/public/overview' });
+    const second = await limited.inject({ method: 'GET', url: '/api/v1/public/overview' });
+    const third = await limited.inject({ method: 'GET', url: '/api/v1/public/overview' });
+    assert.equal(first.statusCode, 200);
+    assert.equal(second.statusCode, 200);
+    assert.equal(third.statusCode, 429);
+    assert.equal(third.json().error.code, 'RATE_LIMITED');
+    assert.ok(Number(third.headers['retry-after']) >= 1);
+    assert.equal(third.headers['ratelimit-remaining'], '0');
+  } finally {
+    await limited.close();
+  }
 });

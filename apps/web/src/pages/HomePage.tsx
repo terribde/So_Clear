@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PUBLIC_PATHS,
@@ -29,7 +29,6 @@ import { SearchHero } from '../components/SearchHero';
 import { TeacherCard } from '../components/TeacherCard';
 import { SectionHeading } from '../components/PageHeader';
 import { ErrorState, LoadingBlock, TeacherGridSkeleton } from '../components/States';
-import { ReviewEntryModal } from '../components/ReviewEntryModal';
 import { useApiResource, usePaginatedApi } from '../features/api/hooks';
 import { formatDate, pageTitle } from '../lib/format';
 
@@ -40,7 +39,6 @@ export function HomePage() {
   const summary = useApiResource<TeacherSummaryDTO>(
     topTeacher ? PUBLIC_PATHS.teacherSummary(topTeacher.id) : null,
   );
-  const [reviewOpen, setReviewOpen] = useState(false);
 
   useEffect(() => {
     document.title = pageTitle();
@@ -250,10 +248,10 @@ export function HomePage() {
                     <span className="flex size-7 items-center justify-center rounded-lg bg-white text-jade-700 ring-1 ring-inset ring-jade-100">
                       <Sparkles className="size-3.5" />
                     </span>
-                    平台评价摘要
+                    评价摘要 · 本地演示
                   </span>
                   <span className="rounded-full bg-white/80 px-2 py-0.5 text-[9px] font-medium text-ink-400 ring-1 ring-inset ring-line/70">
-                    合成演示
+                    非平台 AI
                   </span>
                 </div>
                 <p className="mt-2 text-[10px] leading-relaxed text-ink-500">
@@ -312,16 +310,15 @@ export function HomePage() {
                 <p className="text-[10px] font-medium tracking-[0.16em] text-jade-200">REAL CLASSROOM</p>
                 <h3 className="mt-2 text-base font-semibold leading-snug">下一条有用的评价，<br />可能来自你刚上完的课。</h3>
                 <p className="mt-2 text-[10px] leading-relaxed text-jade-100/80">
-                  提交入口会与独立账号、匿名学生认证一起开放。评分与文字分开审核，不收集无法核验或无法撤回的材料。
+                  本地演示已开放登录、提交、人工审核与撤回。评分与文字分开审核，不收集无法核验或无法撤回的材料。
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setReviewOpen(true)}
+                <Link
+                  to="/teachers"
                   className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[11px] font-semibold text-jade-800 transition hover:bg-jade-50"
                 >
                   <PenLine className="size-3.5" />
-                  了解评价流程
-                </button>
+                  去写一条评价
+                </Link>
               </div>
             </div>
           </aside>
@@ -362,7 +359,7 @@ export function HomePage() {
         <div className="mt-10 flex flex-col items-start justify-between gap-4 rounded-2xl border border-dashed border-line-strong bg-white/40 px-4 py-3.5 text-[11px] text-ink-400 sm:flex-row sm:items-center">
           <span className="inline-flex items-center gap-2">
             <BookOpenText className="size-4 text-jade-600" />
-            当前为公开查询阶段：教师、课程、开课与公开评价可浏览；写评价、学生 AI 与管理区尚未启用。
+            当前为本地演示：公开查询与评价提交/审核/撤回已接通；真实学生认证、学生 AI 与生产管理工作区尚未启用。
           </span>
           <Link to="/guide" className="inline-flex shrink-0 items-center gap-1 font-medium text-jade-700">
             查看当前交付边界
@@ -370,12 +367,6 @@ export function HomePage() {
           </Link>
         </div>
       </div>
-
-      <ReviewEntryModal
-        open={reviewOpen}
-        onClose={() => setReviewOpen(false)}
-        teacherName={topTeacher?.name}
-      />
     </>
   );
 }

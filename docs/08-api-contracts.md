@@ -6,7 +6,7 @@ API 前缀 `/api/v1`，JSON UTF-8。学生与所有日常管理功能使用同�
 
 应用使用 `__Host-sc_session`，管理业务另要求绑定应用会话的短时 `__Host-sc_admin` 与当前 `aal2`。业务修改带 `X-CSRF-Token` 与 `Idempotency-Key`（认证挑战按一次性协议）；管理 CSRF 绑定管理会话，不能复用学生 CSRF。学生 AI 只读 POST 携应用 CSRF，无模型作业/消费副作用，无需用幂等键防模型扣费。浏览器不持 Supabase/数据库/运维令牌；学生自填供应商 Key 仅浏览器直连，本站学生/普通管理接口不接收。平台秘密替换只有第 8 节的专用 write-only 协议可接收获授权的平台秘密，绝不是学生 Key 上传入口。
 
-公开读取采用 `/public/**` 的显式白名单；私有接口不提供匿名回退。路由按业务资源命名，与代码域不要求机械一一对应。接口与 DTO 存入 contracts，运行时 schema 和 OpenAPI 在 P1 同步生成/校验；本文为初步契约，不声称已有可调用服务。
+公开读取采用 `/public/**` 的显式白名单；私有接口不提供匿名回退。路由按业务资源命名，与代码域不要求机械一一对应。接口与 DTO 存入 contracts。P1 已实现公开只读路由及运行时输入校验；OpenAPI 生成/对照、写入/身份/管理/AI 路由仍待实现。本文为设计契约，未实现的路由不代表已有可调用服务。
 
 成功示例：
 
@@ -56,6 +56,7 @@ API 前缀 `/api/v1`，JSON UTF-8。学生与所有日常管理功能使用同�
 | POST /auth/logout | 撤销当前会话 | 本人+CSRF，P |
 | GET /me/reviews | 本人评价、私有审核结果 | 本人，P |
 | POST /me/reviews | 新建待审评价 | 有效学生，P，201 |
+| PATCH /me/reviews/:reviewId | 待审编辑，或被驳回/已公开/已隐藏后修订重审 | 本人+expectedVersion，P；pending 写 edit，rejected/published/hidden 写 resubmit 并回到 pending；已公开版本即时下架、摘要失效；待复核申诉期间拒绝；撤回锁定；非作者 404 |
 | POST /me/reviews/:reviewId/resubmit | 新修订，已公开旧版同步撤下 | 本人+有效学生+expectedVersion，P |
 | POST /me/reviews/:reviewId/withdraw | 撤回并立即撤除公开正文 | 本人控制权+expectedVersion，P；不要求仍在校 |
 | POST /me/reports | 举报公开内容 | 有效账号；风险限流，P |
@@ -102,9 +103,12 @@ API 前缀 `/api/v1`，JSON UTF-8。学生与所有日常管理功能使用同�
 | 方法 / 路径 | 同站前端功能 | 额外边界 |
 | --- | --- | --- |
 | GET /admin/reviews；POST /admin/reviews/:reviewId/decisions；POST /admin/reviews/:reviewId/hide | 评价审核与紧急隐藏 | 指定revision/expectedVersion；非作者审核；普通决定无需二次审批 |
-| GET /admin/dashboard | 本人可见范围的管理概览/待办/告警摘要 | dashboard:read和当前scope；只聚合获准资源，不因概览暴露其他模块私有数据 |
+| GET /admin/dashboard（本地演示实现为 /admin/overview） | 本人可见范围的管理概览/待办/告警摘要 | dashboard:read和当前scope；只聚合获准资源，不因概览暴露其他模块私有数据 |
 | GET /admin/reports；POST /admin/reports/:reportId/decisions | 举报处理 | 当前学校/对象；不向无调查权角色提供作者映射 |
 | GET /admin/appeals；POST /admin/appeals/:appealId/decisions | 申诉处理 | 私有理由最小化、处置历史追加审计 |
+| GET /admin/reviews/:reviewId/audit；GET /admin/audit | 单条评价与全局治理历史（本地演示已实现，含作者编辑 edit 与修订重审 resubmit） | 动作/操作者筛选与分页；只返回动作/原因/状态变化与目标教师/课程；不返回作者、举报人、申诉人或操作者身份 |
+| GET /admin/reviews/:reviewId/revisions | 指定评价的不可变修订历史（本地演示已实现） | 管理员；按修订号倒序，含当前修订标记、评分/描述项/正文与提交/公开时间；不返回作者身份 |
+| GET /admin/teacher-summaries；POST /admin/teachers/:teacherId/summary/regenerate | 摘要管理与本地确定性重建（本地演示已实现） | 样本≥5、expectedEpoch、只读当前公开评价；生成物标注非平台AI，来源变化后自动失效 |
 | GET /admin/catalog/:resourceKind；POST /admin/catalog/:resourceKind；PATCH /admin/catalog/:resourceKind/:resourceId | 教师/学院/课程/学期/开课目录创建与维护 | resourceKind闭集；固定schema，非表名/自由列选择；关联有效性与来源审计，合并/归档按相应注册动作，禁止任意硬删除 |
 | GET /admin/catalog/mappings；POST /admin/catalog/mappings/:mappingId/decisions | 教师同名/来源歧义映射 | 指定来源版本与候选；不以姓名静默合并 |
 | GET /admin/imports；POST /admin/imports；POST /admin/imports/:batchId/dry-run；GET /admin/imports/:batchId/preview | 导入批次、dry-run与差异预览 | 文件隔离、大小/解压/格式限制；创建或dry-run不是公开发布 |

@@ -8,6 +8,7 @@ import {
   type TeacherSort,
 } from '@soclear/contracts';
 import {
+  ArrowLeftRight,
   ChevronDown,
   Filter,
   LoaderCircle,
@@ -114,10 +115,16 @@ export function TeachersPage() {
         title="从课程与公开评价认识老师"
         description="按学院、课程与学期检索。只有达到样本门槛才展示四维综合分；评价正文来自人工审核后的公开内容。"
         action={
-          <Link to="/guide" className="btn-secondary h-9 px-3.5 text-[11px]">
-            <Sparkles className="size-3.5 text-jade-600" />
-            评分与审核口径
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/compare" className="btn-primary h-9 px-3.5 text-[11px]">
+              <ArrowLeftRight className="size-3.5" />
+              教师对比
+            </Link>
+            <Link to="/guide" className="btn-secondary h-9 px-3.5 text-[11px]">
+              <Sparkles className="size-3.5 text-jade-600" />
+              评分与审核口径
+            </Link>
+          </div>
         }
       />
 

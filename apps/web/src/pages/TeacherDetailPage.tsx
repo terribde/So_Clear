@@ -11,6 +11,7 @@ import {
 import {
   AlertCircle,
   ArrowLeft,
+  ArrowLeftRight,
   ArrowUpRight,
   BadgeCheck,
   BookOpenText,
@@ -18,6 +19,7 @@ import {
   CheckCircle2,
   Clock3,
   Fingerprint,
+  Flag,
   Info,
   LoaderCircle,
   MapPin,
@@ -30,6 +32,7 @@ import {
 } from 'lucide-react';
 import { RadarChart } from '../components/RadarChart';
 import { RatingBadge } from '../components/RatingBadge';
+import { ReportModal } from '../components/ReportModal';
 import { ReviewEntryModal } from '../components/ReviewEntryModal';
 import {
   DetailSkeleton,
@@ -52,6 +55,7 @@ export function TeacherDetailPage() {
   const { teacherId } = useParams<{ teacherId: string }>();
   const toast = useToast();
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<PublicReviewDTO | null>(null);
 
   const teacher = useApiResource<TeacherPublicDTO>(
     teacherId ? PUBLIC_PATHS.teacher(teacherId) : null,
@@ -189,8 +193,15 @@ export function TeacherDetailPage() {
                   <CalendarDays className="size-3.5 text-jade-600" />
                   查看本学期开课
                 </Link>
+                <Link
+                  to={`/compare?ids=${encodeURIComponent(data.id)}`}
+                  className="btn-secondary h-10 px-4 text-xs"
+                >
+                  <ArrowLeftRight className="size-3.5 text-jade-600" />
+                  加入对比
+                </Link>
                 <span className="text-[10px] text-ink-400">
-                  写评价需要有效的匿名学生资格，入口尚未开放
+                  提交后需人工审核，作者不会随评价公开展示
                 </span>
               </div>
             </div>
@@ -269,10 +280,13 @@ export function TeacherDetailPage() {
           <section className="surface p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="eyebrow">PLATFORM SUMMARY</p>
-                <h2 className="mt-1.5 flex items-center gap-2 text-xl font-bold tracking-tight text-ink-950">
+                <p className="eyebrow">SUMMARY · 本地演示</p>
+                <h2 className="mt-1.5 flex flex-wrap items-center gap-2 text-xl font-bold tracking-tight text-ink-950">
                   <Sparkles className="size-4 text-jade-600" />
-                  平台评价摘要
+                  评价摘要
+                  <span className="rounded-full bg-sun-50 px-2 py-0.5 text-[9px] font-medium text-sun-700">
+                    本地演示 · 非平台 AI
+                  </span>
                 </h2>
               </div>
               <SummaryState state={summaryData?.state} loading={summary.loading} />
@@ -330,9 +344,9 @@ export function TeacherDetailPage() {
               <div className="mt-4 flex items-start gap-3 rounded-2xl bg-paper/60 p-4">
                 <LoaderCircle className="mt-0.5 size-4 shrink-0 animate-spin text-jade-600" />
                 <div>
-                  <p className="text-xs font-semibold text-ink-800">来源变化后正在重新生成</p>
+                  <p className="text-xs font-semibold text-ink-800">摘要已失效，等待重新生成</p>
                   <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
-                    旧摘要不会在等待期间继续展示。生成完成并通过来源校验后，新摘要才会出现在这里。
+                    公开来源变化后，旧摘要立即停止展示。管理员可在管理工作区用当前公开评价重建本地摘要；重建并通过来源校验前，这里不会恢复展示旧句子。
                   </p>
                 </div>
               </div>
@@ -342,7 +356,7 @@ export function TeacherDetailPage() {
                 <div>
                   <p className="text-xs font-semibold text-ink-800">暂未生成摘要</p>
                   <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
-                    当前只有 {summaryData.sampleCount} 条公开评价，至少需要 5 条且覆盖足够信息后，平台才会整理评价摘要。
+                    当前只有 {summaryData.sampleCount} 条公开评价，至少需要 5 条且覆盖足够信息后，才可以生成评价摘要。
                   </p>
                 </div>
               </div>
@@ -409,7 +423,11 @@ export function TeacherDetailPage() {
                   ) : null}
 
                   {reviews.items.map((review) => (
-                    <ReviewCard key={review.id} review={review} />
+                    <ReviewCard
+                      key={review.id}
+                      review={review}
+                      onReport={() => setReportTarget(review)}
+                    />
                   ))}
 
                   <div className="flex flex-col items-center gap-2 pt-2">
@@ -552,14 +570,14 @@ export function TeacherDetailPage() {
               想补充一条真实体验？
             </div>
             <p className="mt-1.5 text-[10px] leading-relaxed text-ink-400">
-              提交入口与学生认证将在下一阶段接入。新的评价通过人工审核后，才会进入本页的公开样本。
+              本地演示已开放提交：需要登录并具备演示学生资格，通过人工审核后才会进入本页的公开样本。
             </p>
             <button
               type="button"
               onClick={() => setReviewOpen(true)}
               className="mt-2.5 inline-flex items-center gap-1 text-[10px] font-semibold text-jade-700"
             >
-              了解评价流程
+              打开评价表单
               <ArrowUpRight className="size-3" />
             </button>
           </div>
@@ -569,6 +587,12 @@ export function TeacherDetailPage() {
       <ReviewEntryModal
         open={reviewOpen}
         onClose={() => setReviewOpen(false)}
+        teacher={data}
+      />
+      <ReportModal
+        open={Boolean(reportTarget)}
+        onClose={() => setReportTarget(null)}
+        review={reportTarget}
         teacherName={data.name}
       />
     </div>
@@ -625,7 +649,13 @@ function SummaryState({
   );
 }
 
-function ReviewCard({ review }: { review: PublicReviewDTO }) {
+function ReviewCard({
+  review,
+  onReport,
+}: {
+  review: PublicReviewDTO;
+  onReport: () => void;
+}) {
   const reviewOverall =
     SCORE_DIMENSIONS.reduce((sum, dimension) => sum + review.scores[dimension.key], 0) /
     SCORE_DIMENSIONS.length;
@@ -694,6 +724,14 @@ function ReviewCard({ review }: { review: PublicReviewDTO }) {
           </span>
         ) : null}
         <span className="ml-auto">公开修订 v{review.revision}</span>
+        <button
+          type="button"
+          onClick={onReport}
+          className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-medium text-ink-400 transition hover:bg-rose-50 hover:text-rose-600"
+        >
+          <Flag className="size-2.5" />
+          举报
+        </button>
       </div>
     </article>
   );

@@ -1,6 +1,7 @@
 import { NavLink, Link } from 'react-router-dom';
-import { UserRound } from 'lucide-react';
+import { ShieldCheck, UserRound } from 'lucide-react';
 import { BrandLink } from './Brand';
+import { useAuth } from '../features/auth/AuthProvider';
 
 const navigation = [
   { to: '/', label: '首页', end: true },
@@ -10,6 +11,9 @@ const navigation = [
 ];
 
 export function Header() {
+  const { session } = useAuth();
+  const accountLabel = session?.authenticated ? session.account?.displayName ?? '我的' : '登录';
+
   return (
     <header className="sticky top-0 z-40 border-b border-line/75 bg-paper/88 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
@@ -39,17 +43,35 @@ export function Header() {
             <span className="size-1.5 rounded-full bg-jade-500" />
             合成演示
           </span>
+          {session?.isAdmin ? (
+            <>
+              <Link
+                to="/admin"
+                className="hidden h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3 text-xs font-semibold text-ink-700 transition hover:border-jade-300 hover:text-jade-700 sm:inline-flex"
+              >
+                <ShieldCheck className="size-3.5" />
+                审核
+              </Link>
+              <Link
+                to="/admin"
+                className="flex size-9 items-center justify-center rounded-full border border-line bg-white text-ink-600 transition hover:border-jade-300 hover:text-jade-700 sm:hidden"
+                aria-label="进入管理工作区"
+              >
+                <ShieldCheck className="size-4" />
+              </Link>
+            </>
+          ) : null}
           <Link
             to="/me"
-            className="hidden h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-xs font-semibold text-ink-700 transition hover:border-jade-300 hover:text-jade-700 sm:inline-flex"
+            className="hidden h-9 max-w-40 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-xs font-semibold text-ink-700 transition hover:border-jade-300 hover:text-jade-700 sm:inline-flex"
           >
-            <UserRound className="size-3.5" />
-            我的
+            <UserRound className="size-3.5 shrink-0" />
+            <span className="truncate">{accountLabel}</span>
           </Link>
           <Link
             to="/me"
             className="flex size-9 items-center justify-center rounded-full border border-line bg-white text-ink-600 transition hover:border-jade-300 hover:text-jade-700 sm:hidden"
-            aria-label="进入我的页面"
+            aria-label={session?.authenticated ? '查看我的账号与评价' : '登录或查看我的'}
           >
             <UserRound className="size-4" />
           </Link>

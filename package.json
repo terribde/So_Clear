@@ -4,12 +4,16 @@
   "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "pnpm --parallel --stream --filter @soclear/api --filter @soclear/web dev",
     "dev:web": "pnpm --filter @soclear/web dev",
     "dev:api": "pnpm --filter @soclear/api dev",
     "build": "pnpm --filter @soclear/web build && pnpm --filter @soclear/api typecheck",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm --filter @soclear/api test"
+    "test": "pnpm --filter @soclear/api test && pnpm --filter @soclear/web test",
+    "check": "pnpm typecheck && pnpm test && pnpm build"
   }
 }

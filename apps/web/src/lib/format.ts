@@ -24,6 +24,19 @@ export function formatDate(iso: string | null | undefined): string {
   }).format(date);
 }
 
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
 export function formatMeeting(meeting: MeetingDTO): string {
   if (meeting.timeUnknown || meeting.weekday === null) return '时间待定';
   const weekday = weekdays[meeting.weekday - 1] ?? '?';

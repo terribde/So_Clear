@@ -2,7 +2,7 @@
 
 ## 1. 规划目录
 
-下列是实施目录规划；本阶段实际交付仅 `docs/`。前端只有同站 `apps/web`，包含学生功能与 `/admin` 管理workspace；一次构建产出 `index.html`、`admin.html` 两个document入口。后端仍按普通API、admin-api、command-runner、普通worker与平台AI分权限部署。工作区使用pnpm workspace，版本锁定，Node/CI/容器采用一致的受支持版本。
+下列是实施目录规划。当前已交付 `apps/web`、`apps/api`、`packages/contracts` 与 `docs/`，并带有 CI；其余目录、独立运行进程、Supabase 迁移与管理文档仍待实施。前端只有同站 `apps/web`，包含学生功能与 `/admin` 管理workspace；一次构建产出 `index.html`、`admin.html` 两个document入口。后端仍按普通API、admin-api、command-runner、普通worker与平台AI分权限部署。工作区使用pnpm workspace，版本锁定，Node/CI/容器采用一致的受支持版本。
 
 ```text
 SoClear/

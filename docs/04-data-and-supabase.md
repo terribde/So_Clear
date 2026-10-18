@@ -1,6 +1,6 @@
 # 数据模型与 Supabase 边界
 
-状态：设计基线 v0.4，2026-10-18，待实现。五个权限组和学生一次性匿名认证以 [15 匿名学生认证](15-anonymous-student-verification.md) 为准；本文落实其数据、角色、事务及恢复边界。
+状态：设计基线 v0.4，2026-10-18。生产仍待实现；本地原型已落地版本化迁移 `0001_catalog.sql` 与 `0002_accounts_and_reviews.sql`，使用 PGlite（PostgreSQL 18 语义）验证目录表、会议时间约束、公开评价投影、评分一致性、演示账号会话、评价作者/槽位与审核状态机。真实匿名认证、KMS 查重与 Supabase 生产角色/RLS 未实现；五个权限组和学生一次性匿名认证以 [15 匿名学生认证](15-anonymous-student-verification.md) 为准。
 
 ## 1. 数据访问决策
 

@@ -5,7 +5,7 @@ import {
   type RatingSummaryDTO,
   type ScoreSet,
 } from '@soclear/contracts';
-import { reviews, teachersById } from '../data/seed.js';
+import { DATA_UPDATED_AT, reviews, teachersById } from '../data/seed.js';
 
 const round = (value: number, digits = 2) => Math.round(value * 10 ** digits) / 10 ** digits;
 
@@ -15,8 +15,15 @@ export function getPublishedReviews(teacherId: string) {
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || b.id.localeCompare(a.id));
 }
 
-export function summarizeTeacherRatings(teacherId: string): RatingSummaryDTO {
-  const published = getPublishedReviews(teacherId);
+export interface RatingReviewInput {
+  scores: ScoreSet;
+  publishedAt: string;
+}
+
+export function summarizeReviews(
+  published: RatingReviewInput[],
+  statsUpdatedAtFallback: string,
+): RatingSummaryDTO {
   const publishedCount = published.length;
 
   if (publishedCount === 0) {
@@ -27,9 +34,13 @@ export function summarizeTeacherRatings(teacherId: string): RatingSummaryDTO {
       eligible: false,
       overall: null,
       scores: null,
-      statsUpdatedAt: teachersById.get(teacherId) ? '2026-10-16T08:00:00.000Z' : new Date(0).toISOString(),
+      statsUpdatedAt: statsUpdatedAtFallback,
     };
   }
+
+  const sorted = [...published].sort((a, b) =>
+    b.publishedAt.localeCompare(a.publishedAt),
+  );
 
   const averages = {} as ScoreSet;
   for (const key of SCORE_KEYS) {
@@ -49,6 +60,13 @@ export function summarizeTeacherRatings(teacherId: string): RatingSummaryDTO {
     eligible,
     overall,
     scores: eligible ? averages : null,
-    statsUpdatedAt: published[0]!.publishedAt,
+    statsUpdatedAt: sorted[0]!.publishedAt,
   };
+}
+
+export function summarizeTeacherRatings(teacherId: string): RatingSummaryDTO {
+  return summarizeReviews(
+    getPublishedReviews(teacherId),
+    teachersById.has(teacherId) ? DATA_UPDATED_AT : new Date(0).toISOString(),
+  );
 }

@@ -722,6 +722,8 @@ export const coursesById = new Map(courses.map((course) => [course.id, course]))
 export const termsById = new Map(terms.map((term) => [term.id, term]));
 export const teachersById = new Map(teachers.map((teacher) => [teacher.id, teacher]));
 export const sectionsByTeacher = new Map<string, SeedSection[]>();
+export const sectionsById = new Map(sections.map((section) => [section.id, section]));
+export const reviewsById = new Map(reviews.map((review) => [review.id, review]));
 
 for (const section of sections) {
   for (const teacherId of section.teacherIds) {

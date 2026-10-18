@@ -41,7 +41,7 @@ export function GuidePage() {
       <PageHeader
         eyebrow="METHOD / 评价方法"
         title="每个分数，都能解释来源"
-        description="清如许把教学资料、学生评价与平台整理分开处理。这里说明四维评分、样本阈值、审核流程、匿名边界和当前尚未开放的能力。"
+        description="清如许把教学资料、学生评价与平台整理分开处理。这里说明四维评分、样本阈值、审核流程、匿名边界，以及当前本地演示与生产规划之间的边界。"
         action={
           <Link to="/teachers" className="btn-secondary h-9 px-3.5 text-[11px]">
             <BookOpenText className="size-3.5 text-jade-600" />
@@ -191,7 +191,7 @@ export function GuidePage() {
                 },
                 {
                   title: '举报 / 隐藏',
-                  text: '举报核实或紧急隐藏可以停止公开。隐藏和撤回不经普通审核恢复，需重新提交修订。',
+                  text: '举报核实或紧急隐藏可以停止公开。作者可对驳回或隐藏提出申诉；申诉处理结束后也可修改内容重新送审，恢复公开会重新进入统计并写入审计。',
                   tone: 'ink',
                 },
               ].map((item) => (
@@ -252,11 +252,13 @@ export function GuidePage() {
             <SectionTitle icon={<Sparkles className="size-4" />} title="平台总结与学生 AI 是两件事" />
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-jade-100 bg-jade-50/45 p-4">
-                <p className="text-xs font-semibold text-ink-800">平台评价摘要</p>
+                <p className="text-xs font-semibold text-ink-800">评价摘要（本地演示）</p>
                 <p className="mt-1.5 text-[11px] leading-relaxed text-ink-500">
-                  只读取当前公开评价，整理共同表述并绑定来源、样本与版本；不自动改分、不裁决事实真伪、不自动审核。来源变化后旧摘要立即失效。
+                  只读取当前公开评价，整理共同表述并绑定来源、样本与版本；不自动改分、不裁决事实真伪、不自动审核。来源变化后旧摘要立即失效，可由管理员用当前公开来源重建。
                 </p>
-                <p className="mt-2 text-[10px] text-jade-700">当前页面展示的摘要是合成演示内容。</p>
+                <p className="mt-2 text-[10px] text-jade-700">
+                  当前实现由本地确定性规则生成合成演示摘要，不是平台 AI。
+                </p>
               </div>
               <div className="rounded-2xl border border-line/80 bg-paper/45 p-4">
                 <p className="flex items-center gap-2 text-xs font-semibold text-ink-800">
@@ -293,7 +295,7 @@ export function GuidePage() {
               教师与学生对公开内容都应拥有更正渠道。规划中的流程会区分内容纠错、隐私删除与账号处置，并要求相关操作留下审计；不会因为提出删除请求就自动移除所有内容，也不会把申诉材料公开。
             </p>
             <div className="mt-3 rounded-xl border border-dashed border-line-strong bg-paper/45 px-3.5 py-3 text-[10px] leading-relaxed text-ink-400">
-              当前版本尚未开放账号、申诉与举报入口，因此不提供无法实际处理的表单或联系方式。
+              当前本地演示已开放账号、评价提交、人工审核、举报与作者申诉。完整的账号处置、真实身份核验与生产级联系方式仍待接入，因此不提供无法实际处理的其他表单。
             </div>
           </section>
 
@@ -302,8 +304,8 @@ export function GuidePage() {
             <div className="mt-4 space-y-2">
               {[
                 ['已就绪', '公开教师、课程、开课与公开评价查询；四维评分与样本阈值；平台摘要状态展示。', 'done'],
-                ['下一阶段', '独立平台账号与会话、匿名学生认证、评价提交与人工审核、本人记录与撤回。', 'next'],
-                ['后续阶段', '学生自带模型（BYOK）、平台摘要真实生成、同站 /admin 管理工作区与受控运维。', 'later'],
+                ['本地演示', '独立平台账号与会话、演示学生资格、评价提交与人工审核、本人记录与撤回、举报与作者申诉；/admin 审核、举报、申诉队列与治理审计时间线。', 'next'],
+                ['后续阶段', '真实匿名学生认证、学生自带模型（BYOK）、平台摘要真实生成、生产管理工作区与受控运维。', 'later'],
               ].map(([title, text, state]) => (
                 <div key={title} className="flex items-start gap-3 rounded-2xl border border-line/70 p-3.5">
                   <span

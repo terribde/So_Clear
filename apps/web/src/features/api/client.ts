@@ -24,6 +24,14 @@ export interface ApiResult<T> {
   meta: PublicMeta;
 }
 
+export interface ApiRequestOptions {
+  method?: 'GET' | 'POST' | 'PATCH';
+  body?: unknown;
+  csrfToken?: string | null;
+  credentials?: RequestCredentials;
+  signal?: AbortSignal;
+}
+
 function buildQuery(params: Record<string, string | number | undefined | null>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -41,19 +49,34 @@ export function withQuery(
   return `${path}${buildQuery(params)}`;
 }
 
-export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<ApiResult<T>> {
+export async function apiRequest<T>(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<ApiResult<T>> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+  if (options.csrfToken) headers['X-CSRF-Token'] = options.csrfToken;
+
   let response: Response;
   try {
     response = await fetch(path, {
-      method: 'GET',
-      credentials: 'omit',
+      method: options.method ?? 'GET',
+      credentials: options.credentials ?? 'omit',
       cache: 'no-store',
-      headers: { Accept: 'application/json' },
-      signal,
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: options.signal,
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error;
     throw new ApiRequestError(0, 'NETWORK_UNAVAILABLE', '无法连接查询服务，请检查网络后重试。');
+  }
+
+  if (response.status === 204) {
+    return {
+      data: null as T,
+      meta: { generatedAt: new Date().toISOString(), synthetic: true },
+    };
   }
 
   let envelope: ApiEnvelope<T>;
@@ -74,6 +97,10 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<Api
   }
 
   return { data: envelope.data, meta: envelope.meta };
+}
+
+export function apiGet<T>(path: string, signal?: AbortSignal): Promise<ApiResult<T>> {
+  return apiRequest<T>(path, { signal });
 }
 
 export function errorMessage(error: unknown): string {

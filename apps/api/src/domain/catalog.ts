@@ -5,11 +5,8 @@ import {
   type TeacherPublicDTO,
   type TeacherSort,
 } from '@soclear/contracts';
-import { coursesById, sections, teachers, termsById } from '../data/seed.js';
 import { decodeCursor, encodeCursor } from './cursor.js';
 import { ApiError } from './errors.js';
-import { toReviewDTO, toSectionDTO, toTeacherDTO } from '../http/dto.js';
-import { getPublishedReviews } from './ratings.js';
 
 export interface RankedItem<T> {
   value: T;
@@ -80,22 +77,17 @@ function teacherRank(teacher: TeacherPublicDTO, sort: TeacherSort): string {
   return `${eligible}|${(score ?? 0).toFixed(4)}|${String(teacher.ratingSummary.publishedCount).padStart(4, '0')}`;
 }
 
-export function searchTeachers(filters: TeacherFilters): RankedItem<TeacherPublicDTO>[] {
-  const teacherIdsForTerm = filters.termId
-    ? new Set(
-        sections
-          .filter((section) => section.termId === filters.termId)
-          .flatMap((section) => section.teacherIds),
-      )
-    : null;
-
+export function searchTeachers(
+  teachers: TeacherPublicDTO[],
+  filters: TeacherFilters,
+  termTeacherIds: Set<string> | null,
+): RankedItem<TeacherPublicDTO>[] {
   const query = filters.q.toLowerCase();
   const entries: RankedItem<TeacherPublicDTO>[] = [];
 
-  for (const seedTeacher of teachers) {
-    const teacher = toTeacherDTO(seedTeacher);
+  for (const teacher of teachers) {
     if (filters.departmentId && teacher.department.id !== filters.departmentId) continue;
-    if (teacherIdsForTerm && !teacherIdsForTerm.has(teacher.id)) continue;
+    if (termTeacherIds && !termTeacherIds.has(teacher.id)) continue;
     if (query) {
       const haystack = [
         teacher.name,
@@ -117,29 +109,31 @@ export function searchTeachers(filters: TeacherFilters): RankedItem<TeacherPubli
 
 export interface SectionFilters {
   q: string;
-  departmentId: string | null;
   teacherId: string | null;
   termId: string;
   campus: string | null;
   weekday: number | null;
 }
 
-export function searchSections(filters: SectionFilters): RankedItem<SectionDTO>[] {
+export function searchSections(
+  sections: SectionDTO[],
+  filters: SectionFilters,
+): RankedItem<SectionDTO>[] {
   const query = filters.q.toLowerCase();
   const entries: RankedItem<SectionDTO>[] = [];
 
-  for (const raw of sections) {
-    if (raw.termId !== filters.termId) continue;
-    if (filters.teacherId && !raw.teacherIds.includes(filters.teacherId)) continue;
-    if (filters.campus && raw.campus !== filters.campus) continue;
-    if (filters.weekday && !raw.meetings.some((meeting) => meeting.weekday === filters.weekday)) {
+  for (const section of sections) {
+    if (section.term.id !== filters.termId) continue;
+    if (
+      filters.teacherId &&
+      !section.teachers.some((teacher) => teacher.id === filters.teacherId)
+    ) {
       continue;
     }
-
-    const course = coursesById.get(raw.courseId)!;
-    if (filters.departmentId && course.departmentId !== filters.departmentId) continue;
-
-    const section = toSectionDTO(raw);
+    if (filters.campus && section.campus !== filters.campus) continue;
+    if (filters.weekday && !section.meetings.some((meeting) => meeting.weekday === filters.weekday)) {
+      continue;
+    }
     if (query) {
       const haystack = [
         section.course.name,
@@ -165,14 +159,10 @@ export function searchSections(filters: SectionFilters): RankedItem<SectionDTO>[
   return entries;
 }
 
-export function searchReviews(teacherId: string): RankedItem<PublicReviewDTO>[] {
-  return getPublishedReviews(teacherId).map((review) => ({
-    value: toReviewDTO(review),
+export function searchReviews(reviews: PublicReviewDTO[]): RankedItem<PublicReviewDTO>[] {
+  return reviews.map((review) => ({
+    value: review,
     rank: review.publishedAt,
     id: review.id,
   }));
-}
-
-export function isValidTerm(termId: string): boolean {
-  return termsById.has(termId);
 }

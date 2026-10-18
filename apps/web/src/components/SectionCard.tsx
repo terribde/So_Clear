@@ -162,10 +162,10 @@ export function SectionCard({
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line/50 pt-2.5 text-[10px] text-ink-400">
         <span>容量与时间为来源快照，不承诺实时余量。</span>
         <Link
-          to={`/teachers/${section.teachers[0]?.id ?? ''}`}
+          to={`/sections/${section.id}`}
           className="inline-flex items-center gap-0.5 font-medium text-ink-500 transition hover:text-jade-700"
         >
-          教师详情
+          查看开课详情
           <ArrowUpRight className="size-3" />
         </Link>
       </div>
