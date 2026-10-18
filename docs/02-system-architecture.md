@@ -38,6 +38,9 @@ flowchart TB
     DB --> OUT[事务 outbox / 平台任务事实]
     OUT --> WORKER[普通 worker: projector / importer]
     WORKER --> CACHE
+    WORKER --> CSYNC[后端每日 cache-sync / 公开目录快照]
+    CSYNC --> CPROVIDER[缓存服务商私有版本 / 待选]
+    CPROVIDER --> CACHE
     WORKER --> PURGE[CDN 失效]
     WORKER --> DB
     OUT --> AIO[平台 AI orchestrator]
@@ -51,6 +54,8 @@ flowchart TB
 图中箭头表示能力调用，不表示对公网开放。入口将同域 `/api/v1/admin/**` 专门转发至内网 admin-api，普通 API 不注册管理路由、不持管理凭据。两种 API 可复用产物，但角色、连接池与网络能力独立；admin-api 本身也没有 owner、service_role、通用 SQL/shell 或基础设施万能凭据。安全、运维和秘密写入命令分别由 `apps/command-runner` 的受限运行模式执行。
 
 学生供应商调用不经过本站 relay，本站只读工具不调用模型。`apps/worker` 负责投影与导入，`apps/ai-worker` 负责平台分析，二者不共用供应商密钥、执行队列、费用预算或运行账号。
+
+数据库缓存统一由后端cache-management制定策略并执行，前端只取本站DTO；CDN/Redis是后端控制的缓存层，不是前端数据库副本。普通worker的cache-sync模式每天向配置的缓存服务商同步一次获准公开目录快照，默认计划为Asia/Shanghai每日03:00，实际目标待选。每日快照仅用于已校验的缓存预热，当前API仍执行30/60秒新鲜度和安全gate；权限/撤稿/认证不等待日同步，也不把写入暂存在缓存一天再落数据库。完整任务/原子发布与恢复规则见[16](16-backend-cache-and-daily-sync.md)。
 
 平台 AI 产物进一步以独立进程运行 orchestrator、data bridge 和 model executor：前者只管理平台作业/预算，bridge 只提供被授权的脱敏数据，executor 仅持平台供应商 key、无数据库/Redis/身份凭据。不能把同进程内“不 import 数据库”的模块约定当作凭据隔离。首期不需要 Kubernetes、服务网格、独立向量库或消息中间件集群。
 
@@ -99,6 +104,8 @@ flowchart TB
 `/api/v1/public/**` 只按白名单读取去身份化投影。浏览器使用 `credentials: omit`；入口仅对显式白名单剥离 Cookie/Authorization，再按规范化 query 缓存。公开 handler 忽略身份且不设置 Cookie，不按登录态、实验分组或权限改变正文。
 
 目录和普通评分摘要可 CDN → Redis → SQL 回源；评价正文和平台教师总结 HTTP 均为 no-store。每次正文、学生 AI 证据及总结读取，先由主库验证当前公开状态、修订/generation 和依赖范围版本，再取精确版本内容。检查失败时拒绝旧内容，不能从缓存或延迟副本获取授权状态。撤稿保证针对提交后开始授权的新读取；已授权在途响应和已下载/已发送到外部供应商的数据不能保证收回。目录统计可短暂陈旧，预算见 [06](06-capacity-and-performance.md)。
+
+上述缓存键/TTL/失效/CDN规则只有后端可配置和发布。服务商日快照不含评分、正文、总结、私有账号或安全状态；加载前证明当前目录版本并校验完整性/年龄，失败按额度回源。前端可取消/去重当前请求和保存渲染状态，不能自行填充或同步数据库缓存。
 
 ### 4.2 身份与写入
 

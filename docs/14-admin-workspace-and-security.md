@@ -82,7 +82,7 @@ flowchart TB
 | `/admin/security/audit` | 平台操作/拒绝审计、内容处置历史与有限导出 | system_admin `audit:read/export`；content_admin仅`audit:read-content`自有内容scope；均无校园数据/tag/秘密 |
 | `/admin/security/account-cases` | 按目的/对象/期限核查平台账户行为、申诉与处置 | system_admin，`accounts:audit-behavior`；仅最少平台事实，无校园身份揭示/查重账本，不能从tag找账户 |
 | `/admin/operations/feature-flags`、`/rate-limits` | 功能范围、灰度、route预算和限流配置 | system_admin，`ops:configure`；不能关鉴权/CSRF/撤稿gate/匿名认证边界 |
-| `/admin/operations/cache` | scope缓存预览/失效/重建 | system_admin，`ops:cache-invalidate`；不得清会话/费用/查重账本 |
+| `/admin/operations/cache` | 后端缓存/每日服务商同步：计划/时区、目标引用、源水位/年龄、最近成功/版本/失败阶段、定向失效/重建和原日槽位补跑 | system_admin：`ops:observe`查看，`ops:cache-invalidate`定向失效，`ops:cache-sync`同步重试；目标/策略/日程需`ops:configure`及相应门禁。无凭据/原始快照，不清会话/费用/查重账本，详见[16](16-backend-cache-and-daily-sync.md) |
 | `/admin/operations/jobs` | 普通积压/死信重放/取消、worker排空 | system_admin，`ops:job-manage`；固定类型/版本，不能重放认证原文或重复授予 |
 | `/admin/operations/metrics` | 脱敏运行/日志摘要、告警和事件结果 | system_admin，`ops:observe`；认证查重仅不关联主体的安全聚合，无原文/tag |
 | `/admin/operations/backups` | 备份/恢复点、触发/验证和演练 | system_admin，`backups:manage`；不下载全库，不将真实学校信息纳备份 |

@@ -1,6 +1,6 @@
 # 安全、隐私与信任边界
 
-状态：五权限组与匿名认证设计基线 v0.4，2026-10-18，尚未实施。所有日常管理能力接入 `apps/web` 的 `/admin` 工作区；权限与受控作业见 [14 管理工作区](14-admin-workspace-and-security.md)，学生认证零原文留存与HMAC查重协议见[15](15-anonymous-student-verification.md)。后端执行身份仍按能力隔离。
+状态：安全设计基线v0.5，2026-10-18，尚未实施。所有日常管理能力接入 `apps/web` 的 `/admin` 工作区；权限与受控作业见[14](14-admin-workspace-and-security.md)，学生零原文认证见[15](15-anonymous-student-verification.md)，后端缓存/每日同步见[16](16-backend-cache-and-daily-sync.md)。后端身份按能力隔离。
 
 ## 1. 保护对象与威胁模型
 
@@ -121,7 +121,9 @@ AI派生内容也受撤稿控制：学生浏览器取得证据后、展示解释
 
 示例初值：学生提交5次/小时、20次/日；OTP分层限流；学生页面每次1个模型流程属于本地保护，本站只对search/evidence/validate限制用户频率、复杂度和并发，不承诺控制外部模型费用。平台分析另有供应商并发与货币预算，不影响学生BYOK准入。公开查询按全局/路由回源预算保护，IP阈值覆盖校园NAT，不能按单人频率限制校园出口。压测同时验证生产限流和共享出口策略，所有初值由误伤观测调整。
 
-幂等 key 不是授权凭证；缓存 key 不是访问控制。用户内容缓存绑定 session/actor，退出清除。共享缓存只容纳完全公开且身份无关的表示；private、auth、admin、AI 和错误响应一律 no-store。允许缓存的公共 handler 不得 Set-Cookie，Cache-Control 与 CDN 规则共同测试。[HTTP Cache-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control)
+幂等key和缓存key均非授权凭证。用户当前页状态按session/actor隔离，退出清除。共享缓存只容纳公开且身份无关表示，private/auth/admin/AI和错误均no-store，公共handler不Set-Cookie；CDN规则与Cache-Control共同验证。[HTTP Cache-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control)
+
+数据库缓存统一后端管理，前端只保留当前页必要状态。每日向缓存服务商同步仅白名单公开目录，目标默认私有，provider凭据只在后端adapter；不导出整库/账号作者/权限/认证/raw/tag/Key，不因“缓存”减少权限检查。完整快照验证/版本激活与紧急失效见[16](16-backend-cache-and-daily-sync.md)，日副本不能代替当前新鲜度、撤稿或匿名认证恢复事实。
 
 查询缓存Redis异常时限额回源；会话安全存储异常关闭受影响私有接口与学生证据能力。平台分析账本/模型异常仅暂停平台任务，不关闭普通评价提交、人工审核或仍能安全服务的学生BYOK数据接口。禁止无上限旁路数据库，具体预算见 [06](06-capacity-and-performance.md)。
 

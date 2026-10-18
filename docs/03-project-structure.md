@@ -36,6 +36,7 @@ SoClear/
 │  │     ├─ bootstrap/            # ordinary/admin-api独立模式与凭据
 │  │     ├─ gateway/              # 会话、CSRF、校验、限流、trace
 │  │     ├─ modules/
+│  │     │  ├─ cache-management/  # 后端唯一缓存策略/版本/失效入口，provider凭据不进前端
 │  │     │  ├─ reviews/           # routes/service/policy/repository/schemas/public/tests
 │  │     │  ├─ student-query/     # 受控只读DSL与公开证据API
 │  │     │  ├─ teacher-summaries/ # 当前平台总结的主库gate与DTO
@@ -49,7 +50,7 @@ SoClear/
 │  │     ├─ dedup/                # KMS全历史HMAC候选、keyring generation
 │  │     └─ claim/                # 专用原子tag+grant+challenge port，非公开RPC
 │  ├─ worker/
-│  │  └─ src/                     # projector/importer分模式运行；无模型调用
+│  │  └─ src/                     # projector/importer/cache-sync分模式；无模型调用
 │  ├─ command-runner/
 │  │  └─ src/
 │  │     ├─ security/             # 组权限/原grant处置/平台行为case，无校园身份揭示
@@ -69,7 +70,7 @@ SoClear/
 │  │  │  └─ registry.ts          # 精确HTTPS endpoint/协议/CORS能力/CSP来源
 │  │  └─ server/                  # 仅平台executor导入，独立server export
 │  ├─ backend-core/               # API/worker/AI共用后端用例及port，浏览器禁止引入
-│  ├─ backend-adapters/           # SQL、Auth、Redis，服务端专用
+│  ├─ backend-adapters/           # SQL、Auth、Redis与缓存服务商adapter，服务端专用
 │  ├─ ui/                         # 展示组件，可选；不持有凭据与授权
 │  └─ tooling/                    # TS、lint、依赖图/CSP/秘密扫描配置
 ├─ supabase/
@@ -117,6 +118,8 @@ SoClear/
 
 普通API不可SET ROLE到管理执行角色；admin-api本身无owner/service_role、任意SQL/shell、全能云凭据或秘密原值读取接口。security、ops、secret-write runner分进程/网络/账号，仅消费自身类型的intent和任务，不能通过通用job payload选择任意方法、endpoint或运行角色。
 
+数据库缓存策略统一定义在后端cache-management用例/port，API、worker和ops runner只调用同一来源的策略；缓存服务商SDK、写入/发布凭据、命名空间和调度配置均限服务端。公开DTO白名单与版本规范复用既有契约，前端和模型不能决定缓存权限、TTL、任意目标或清理范围。会话、安全计数、费用事实和学生查重账本继续按各自安全存储规则处理，不能被普通缓存重建/同步覆盖。
+
 ## 3. 学生浏览器 AI 与前端约定
 
 学生AI页面按[12](12-student-byok-ai.md)使用当前页内存key。禁止写localStorage/sessionStorage/IndexedDB/URL/Cookie/Service Worker/query cache/开发工具快照/日志/埋点/崩溃报告，不把学生key传本站任何fetch。离页、退出、换key或进入管理document前abort供应商请求、清key及未交付解释；不承诺JavaScript物理擦除内存。平台秘密替换使用另外的受限管理命令，不得借此接收学生key。
@@ -128,7 +131,7 @@ registry 维护精确 HTTPS endpoint、固定协议、可接受模型名语法�
 其他前端约定：
 
 - 页面容器组合数据，展示组件只接收 props；共用响应式路由，不复制移动/桌面业务规则。
-- 统一本站查询缓存，key 包含规范化参数、学校、学期、公开版本；`/me` 按会话隔离，退出清理。评价正文、学生 AI 证据/回答、平台总结不进入持久缓存。
+- 数据库查询缓存统一由后端生成、命名、刷新、失效和同步；前端只通过本站API取DTO，保留当前页面所需的短期展示状态和请求去重，不维护数据库副本、持久化查询结果或直连缓存服务商。换账号/退出清本人状态，评价正文、学生AI证据/回答、平台总结不进持久浏览器缓存。
 - 本站普通 GET 有限重试；写入重试必须带原幂等键；401 不循环，429 遵循 Retry-After。学生供应商调用不透明重试，避免重复计费。
 - 密码、身份令牌、学生证明、评价草稿不存 localStorage；临时草稿默认内存，持久化另做隐私评审。
 - 学生 AI 页面不装载无关第三方脚本；CSP 与 key 仅内存不能替代 XSS、依赖与浏览器网络测试。
