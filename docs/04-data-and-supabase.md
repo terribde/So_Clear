@@ -87,7 +87,9 @@ erDiagram
 | private.import_batches / source_records | 来源、内容digest、格式版本、dry-run、发布版本、失败原因；原始行不公开 |
 | private.audit_events | 平台主体、范围、对象、动作、结果、request_id、时间；仅平台账户行为case追加审计，无学校身份/tag/证明或可连接查重行的payload |
 
-缓存同步新增`private.cache_sync_jobs`（scope/目标引用/逻辑日期/策略/源水位、版本、租约/fence、阶段/重试/校验结果）与`private.cache_snapshot_manifests`（固定公开目录范围、分片摘要/大小、sourceAsOf、已验证版本/激活指针）；业务数据仅存获准公开投影的版本副本，不存整库dump、私有账号/认证/秘密。日槽位唯一与激活条件在DB约束，provider只是可丢弃副本，不向事实表反向覆盖。后台最小reader/exporter及固定发布port处理，普通member/管理员不能直接改这些表或自由导出。详见[16](16-backend-cache-and-daily-sync.md)。
+后端每日将获准运行缓存写回Supabase的**独立缓存表**：`cache_persistence.snapshots`保存scope/固定缓存版本/源水位/sourceAsOf、schema/策略、总计数/大小/摘要、staging/ready/invalidated；`cache_persistence.snapshot_chunks`保存有界序列化缓存分片，UNIQUE(snapshot_id,chunk_no)，同编号同摘要才可幂等重写。`private.cache_sync_jobs`保存目标/日槽位/租约fence/重试阶段，`private.cache_snapshot_manifests`保存完整验证清单与active指针。仅白名单目录，无整库Redis dump/私有账号/认证/秘密；不能反向覆盖core等事实表。
+
+cache_persistence不加入Supabase Data API exposed schemas，撤PUBLIC/anon/authenticated授权及default privileges、RLS默认拒绝。后端专用SQL身份仅经受控分片写/校验/激活/加载/清理port操作，普通member/管理API/AI无快照表权限。日槽位唯一，完整校验后同库短事务标ready、CAS切active并记job成功；批写不等于已可加载。独立批大小/连接/IO/WAL/保留上限，cache与业务同Supabase故障域。协议见[16](16-backend-cache-and-daily-sync.md)。
 
 完整DDL/索引在P1迁移给出。`auth.users`由Supabase管理，不自行存密码或改系统表，删号前执行应用清理。平台优先采用不依赖真实联系方式的受支持凭据/恢复适配器（P0验证）；可选平台邮箱只接受独立非校园联系方式，已知学校域准入拒绝，不能从学校断言填姓名/邮箱/metadata。平台联系方式按自己的用途处理，不作学生证明。旧“认证原件最长7天”取消，人工也不收存档材料。
 
@@ -108,7 +110,7 @@ erDiagram
 | soclear_ops_commands | 固定备份/恢复/发布/功能/资源工作流，调用白名单运维port | 通用shell/SQL、用户给定endpoint/脚本、学校身份调查、作为DB owner常驻连接、清查重事实重置认证 |
 | secret-write，无业务DB角色 | 验证有界授权写票据后向密管创建指定用途secret版本，只返回keyRef/版本/配置状态 | 通用密管读取、保存/回显原值或片段/值hash、代存学生BYOK key |
 | soclear_projector | 普通outbox、摘要增量/校准、限定投影 | 平台模型key/调用账本、身份令牌、任意导入 |
-| soclear_cache_sync_worker | 固定白名单公开目录/源版本导出、日槽位任务/租约/fence、受控manifest条件激活；仅cache-sync部署持目标缓存服务商写入能力 | 评分/正文/registry/私有账号/权限/grant/tag/原文/秘密导出、通用SQL/目标URL、反写业务事实或清安全存储 |
+| soclear_cache_sync_worker | 固定版本后端目录缓存序列化，日槽位/租约/fence；通过窄port分批写Supabase cache_persistence、校验/条件激活/清理；加载port单独限制scope | 评分/正文/registry/私有账号/权限/grant/tag/原文/秘密落缓存，通用SQL/任意schema/项目、反写业务事实，owner/BYPASSRLS/service-role或清安全存储 |
 | soclear_importer | staging校验与受控数据发布 | 修改评价/授权、平台模型调用 |
 | soclear_platform_ai_worker | 平台种类任务、租约/fencing、预算/调用账本、条件提交/总结发布gate命令 | 任意读待审正文、作者/资格/会话、任意UPDATE公开总结、发布学生评价或改评分 |
 | soclear_platform_ai_reader | 受控bridge函数返回任务绑定的指定脱敏修订/公开manifest | 任意遍历私有评价、作者映射、改jobs/预算/审核 |

@@ -156,9 +156,9 @@ tag-only 账本、其必要持久日志与 KMS 历史版本独立备份/恢复�
 
 ### 每日缓存同步的应用调度
 
-数据库缓存统一由后端cache-management管理，API只按统一策略读写缓存，前端无缓存服务商客户端/凭据或数据库副本。普通worker的cache-sync模式每日一个固定scope/目标槽位，默认Asia/Shanghai 03:00；日幂等约束在PostgreSQL，多副本用租约/fence，重启补扫/有限重试不重复逻辑发布。服务商名称/资源待选，未配置时adapter关闭；这是待实施应用任务，未创建实际外部定时任务。
+数据库缓存统一后端管理。普通worker的cache-sync已确定每日把运行缓存写入Supabase PostgreSQL非公开cache_persistence表，默认Asia/Shanghai 03:00；同项目/环境/scope/日期日槽位唯一，租约/fence保证多副本/补跑幂等。不另选缓存服务商；具体项目/低权限SQL连接/迁移/容量未验收前任务关闭，当前仅文档。
 
-按[16](16-backend-cache-and-daily-sync.md)只导出公开目录白名单固定版本，分批上传私有staging，manifest/摘要/计数/抽样回读通过后条件激活；写凭据仅后端adapter按scope使用，不进前端、通用job、日志/管理DTO。导出有独立DB/IO/出网/deadline预算，避免长事务/全库扫描。结果未知先核对版本，失败保留未超龄且安全的已知好版本，不原地覆盖半包。
+按[16](16-backend-cache-and-daily-sync.md)序列化后端固定版本的白名单目录缓存，缺块/过期先限额重建，不Redis全量dump/SCAN混版本。分批短事务写cache_persistence.snapshots/snapshot_chunks staging，schema/摘要/完整性/SQL回读通过后，同Supabase短事务激活ready/active指针并记job成功。adapter专用SQL凭据无owner/BYPASSRLS/service-role，不进前端/job/日志。写入提交未知先查原快照/job，失败保留安全未超龄已知好版本，禁止半包加载；连接/IO/WAL/体积/保留量/deadline独立预算，避免拖主库。
 
 初始副本最大源年龄30小时，sourceAsOf不因重试改新；最近成功/下次计划/年龄/体积/校验/错误在同站缓存面板显示。加载用于预热前证明目录版本仍当前且满足API预算，超龄/版本未知限额回源或拒绝。当前30/60秒投影、内容/总结/权限gate不改，紧急撤除不等次日。快照不含评分/正文/registry、账号作者/授权/资格、tag/校园原文或Key，不作备份恢复依据。
 
@@ -208,7 +208,7 @@ admin-api 与 ops/security runners 独立排空。runner 停止领取新 command
 | --- | --- | --- |
 | 入口/API | 请求率、分状态码错误率、路由 p50/p95/p99、在途请求、拒绝数、响应字节 | 公开请求 SLO 与错误预算；429/503 不能被聚合隐藏 |
 | CDN/查询缓存 | 边缘和源站命中率、回源率、缓存字节、失效失败/延迟、键增长 | 热点变更、冷缓存、穿透和高基数输入 |
-| 每日缓存同步 | 计划/最近成功日期、sourceAsOf/年龄、导出/上传/校验/激活耗时、字节/出网、重试/租约/unknown、源版本差 | 一个日槽位、半包/旧版本禁止激活、独立预算；副本超龄不加载，安全失效不等次日 |
+| 每日缓存写Supabase | 计划/最近成功、sourceAsOf/年龄、序列化/SQL批写/校验/激活耗时、行数/字节/DB体积与WAL、重试/租约/unknown、清理/源版本差 | 一日槽位/完整激活、无半包/旧fence覆盖，保留量和资源独立；超龄不加载，安全失效不等次日 |
 | DB/连接池 | active/idle/等待、获取连接耗时、statement timeout、锁等待、慢查询、CPU/IO/磁盘 | 预留被侵占、长事务、连接泄漏、重试放大 |
 | 安全/session | 会话读取失败、资格校验失败、CSRF 拒绝、按原因限流、权限异常 | 区分真实攻击、配置错误与依赖故障；避免一概触发封禁 |
 | 匿名学生认证 | 按 school/issuer 粗粒度的请求/拒绝/超时/并发、KMS/key 版本可用、账本恢复健康、零落盘检测 | 不使用 app ID、canonicalStableId、tag、claimId、精确领取时间/IP 作标签/诊断样本；不建 app 与 tag 的 trace 关联；面板不显示 raw/digest |
@@ -238,7 +238,7 @@ Supabase 的备份、PITR 保留窗口及可用条件随所选项目能力核验
 - schema migrations、数据库角色/grant/RLS 定义、公开投影重建逻辑、部署配置和不可变 artifact；机密本身通过独立受控设施备份/恢复，绝不放普通配置仓库。
 - 管理 capability/scope、角色版本、sessionEpoch、kill/撤销记录、command/intent 状态与独立安全审计时间线。关键安全撤销与控制水位需有受保护的恢复后核对来源；不能只依赖将被回退的同一快照。已消费/失效 intent 永不从备份恢复成可执行。
 - 如有普通业务获准附件，另做对象版本/清单/加密/删除和备份；**不引入学生认证材料存储**。学生学号/姓名/校园 email/凭据/SSO subject/token/材料、callback raw/code/query、原文日志/dump 不在对象或备份里，不能以加密备份为例外。
-- 查询缓存无需备份，可以重建；每日服务商快照只是可丢弃预热副本，加载前复验sourceAsOf/版本/禁止交付水位，不代替PITR、恢复会话/资格或匿名查重事实。日任务和manifest元数据可随应用库备份，但恢复后不重放已完成日发布或激活旧fence。安全/session恢复不能复活已撤销会话或回退安全计数，重大恢复后默认重新登录。
+- 运行缓存可重建；每日写入Supabase的cache_persistence快照也是可丢弃预热副本，与业务表同故障域，不代替PITR或恢复会话/资格/查重事实。若物理备份附带缓存表，恢复后先置不可加载，核验sourceAsOf/当前源版本/禁止交付水位/清单完整性才重新开放，不因备份带回ready就交付。日job/manifest恢复不重放已成功日槽位或旧fence，安全/session仍不得复活已撤销会话，重大恢复要求重新登录。
 - 学生自己的 key、供应商配置、模型对话/结果不在本站备份范围，因为本站从未接收或持久化。恢复流程不能从学生浏览器“补采”这些数据；平台费用账本恢复不代表能恢复学生供应商账单。
 
 至少在首次上线前、数据库重大迁移后和定期演练时执行以下恢复步骤：

@@ -120,7 +120,7 @@ API 前缀 `/api/v1`，JSON UTF-8。学生与所有日常管理功能使用同�
 | GET /admin/authorization/bindings；GET /admin/audit-events | 授权范围与审计 | 专项查看capability、作用域过滤，不能以审计接口读取秘密/原始日志 |
 | GET /admin/account-cases；GET /admin/account-cases/:caseId | 平台账号行为核查case/受限结果 | system_admin+accounts:audit-behavior及目的/目标/期限；无校园身份揭示、tag或真实账号反查 |
 | GET /admin/operations/config；PATCH /admin/operations/config/:configId | 功能开关、限流、安全范围内配置 | 版本化白名单；不得关闭认证/CSRF/RLS/审计/撤稿gate |
-| GET /admin/operations/cache；GET /admin/operations/queues | 后端缓存/每日同步与队列状态 | system_admin当前只读cap/scope；cache返回目标引用/计划/时区/源水位/年龄/版本/最近成功与失败阶段，无凭据或原始快照；不清安全事实 |
+| GET /admin/operations/cache；GET /admin/operations/queues | 后端缓存/每日写Supabase与队列状态 | system_admin当前只读cap/scope；cache含targetKind=supabase_postgres、项目环境引用/计划/时区/源水位/年龄/版本/结果，无连接凭据/原始快照，不清安全事实 |
 | GET /admin/operations/cache/sync-jobs；GET /admin/operations/cache/sync-jobs/:syncJobId | 每日缓存同步任务/校验/激活进度 | system_admin+ops:observe及scope，P；同步/重试使用固定intent/command，不能自由目标/时间/查询导出 |
 | GET /admin/operations/metrics；GET /admin/operations/events | 站内监控/告警/事件/受控日志摘要 | 对应只读capability与学校/环境scope，固定指标/时间窗/分页，无原始凭据或全文任意日志查询 |
 | GET /admin/operations/backups；GET /admin/operations/releases | 备份/恢复点与发布/回滚制品 | 仅登记资源元数据/健康状态，无数据库密码、签名下载URL或shell命令 |
@@ -212,7 +212,7 @@ Q路由可由后端配置独立共享边缘策略，初始TTL30秒、总体最�
 
 缓存白名单 route、query、响应 schema 与部署规则共同版本化；未知 query 参数、错误响应、Set-Cookie 响应不得共享缓存。拒绝客户端控制 cache key 前缀、host 转发头、内部 cache 状态和 purge tag。公共接口不因 Cookie、Authorization、语言或登录态偷偷变化；需要新变体时显式纳入白名单 key 和契约。
 
-每日任务状态使用固定`CacheSyncStatusDTO`：targetRef、schoolScope、logicalDate、timezone/scheduledAt、sourceAsOf、lastSuccessfulSyncAt/nextScheduledAt、snapshotVersion、executionState、校验摘要/体积、受控错误与可执行动作；不含服务商凭据、直下载URL、原始数据或任何私有身份。schema允许planned/running/validating/activating/succeeded/failed/uncertain/superseded，状态以持久job为准，202不是成功发布。
+每日`CacheSyncStatusDTO`固定targetKind=supabase_postgres，targetRef仅为获准项目/环境引用，另有schoolScope/logicalDate、计划/时区、sourceAsOf、最近成功/下次时间、snapshotVersion、状态、校验摘要/体积/受控错误与动作；无SQL连接凭据、缓存分片/原始数据。状态planned/running/validating/activating/succeeded/failed/uncertain/superseded以持久job为准。202或某批commit都不代表完整快照已激活；最后在Supabase短事务原子完成ready+active+job成功，详见[16](16-backend-cache-and-daily-sync.md)。
 
 ## 8. 管理操作预览、命令作业与密管例外
 
@@ -232,7 +232,7 @@ Q路由可由后端配置独立共享边缘策略，初始TTL30秒、总体最�
 
 `operation-intents` 的输入只接受注册表枚举 `operationId`、规范目标、scope 提示、目标版本和该操作专有参数。scope 提示必须与数据库当前授权相交，不能由客户端扩大。服务器绑定发起人、应用/管理会话、roleVersion/sessionEpoch、规范参数摘要、预览目标版本、策略版本和 expiresAt，写入 `private.operation_intents`；原始密钥永远不进入其中。
 
-缓存动作分开注册：`cache.sync.retry`需system_admin+ops:cache-sync，目标只能是已登记scope/目标/日槽位任务，重试仍复用原日任务和版本幂等；`cache.invalidate`需ops:cache-invalidate，禁止触及会话/授权/费用/匿名查重事实；目标/策略/日程修改需ops:configure及相应风险门禁。每日自动任务使用获准工作负载身份，所有导出/激活在后端执行，不接受浏览器任意cache key、URL、SQL或完整数据包。
+缓存命令分开注册：cache.sync.retry需system_admin+ops:cache-sync，固定为登记Supabase环境/scope/原日任务，不接受改服务商/schema；cache.invalidate需ops:cache-invalidate，不触及会话/授权/费用/查重；项目环境/策略/日程变更需ops:configure和相应门禁。自动任务用专用工作负载，后端读取固定缓存版本并写Supabase快照窄port，浏览器不能提交任意cache key/URL/SQL/表名或整份payload。
 
 `POST /admin/commands` 示例只用于协议说明：
 

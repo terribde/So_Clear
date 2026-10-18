@@ -36,7 +36,7 @@ SoClear/
 │  │     ├─ bootstrap/            # ordinary/admin-api独立模式与凭据
 │  │     ├─ gateway/              # 会话、CSRF、校验、限流、trace
 │  │     ├─ modules/
-│  │     │  ├─ cache-management/  # 后端唯一缓存策略/版本/失效入口，provider凭据不进前端
+│  │     │  ├─ cache-management/  # 后端缓存策略/版本/失效；每日快照写Supabase
 │  │     │  ├─ reviews/           # routes/service/policy/repository/schemas/public/tests
 │  │     │  ├─ student-query/     # 受控只读DSL与公开证据API
 │  │     │  ├─ teacher-summaries/ # 当前平台总结的主库gate与DTO
@@ -70,7 +70,7 @@ SoClear/
 │  │  │  └─ registry.ts          # 精确HTTPS endpoint/协议/CORS能力/CSP来源
 │  │  └─ server/                  # 仅平台executor导入，独立server export
 │  ├─ backend-core/               # API/worker/AI共用后端用例及port，浏览器禁止引入
-│  ├─ backend-adapters/           # SQL、Auth、Redis与缓存服务商adapter，服务端专用
+│  ├─ backend-adapters/           # SQL/Auth/Redis、supabase-cache-snapshot，仅服务端
 │  ├─ ui/                         # 展示组件，可选；不持有凭据与授权
 │  └─ tooling/                    # TS、lint、依赖图/CSP/秘密扫描配置
 ├─ supabase/
@@ -118,7 +118,7 @@ SoClear/
 
 普通API不可SET ROLE到管理执行角色；admin-api本身无owner/service_role、任意SQL/shell、全能云凭据或秘密原值读取接口。security、ops、secret-write runner分进程/网络/账号，仅消费自身类型的intent和任务，不能通过通用job payload选择任意方法、endpoint或运行角色。
 
-数据库缓存策略统一定义在后端cache-management用例/port，API、worker和ops runner只调用同一来源的策略；缓存服务商SDK、写入/发布凭据、命名空间和调度配置均限服务端。公开DTO白名单与版本规范复用既有契约，前端和模型不能决定缓存权限、TTL、任意目标或清理范围。会话、安全计数、费用事实和学生查重账本继续按各自安全存储规则处理，不能被普通缓存重建/同步覆盖。
+数据库缓存策略统一在后端cache-management用例/port；API/worker/ops runner只复用同一来源。`supabase-cache-snapshot` adapter将后端运行缓存的获准固定版本每日分批写Supabase PostgreSQL的cache_persistence表，使用独立低权限SQL身份；schema/任务/连接秘密仅服务端，不引入另一缓存服务商SDK。前端/模型不能决定TTL、任意目标/表名或清理范围。会话/安全计数/费用/查重仍各自处理，不被缓存同步覆盖，协议见[16](16-backend-cache-and-daily-sync.md)。
 
 ## 3. 学生浏览器 AI 与前端约定
 
